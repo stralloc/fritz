@@ -1,0 +1,23 @@
+v1 - v2 18.06.2013
+* Funktion byte_equal_notimingattack() hinzugefügt
+
+v2 - v3 11.07.2013
+* gcc's Stack Protection aktiviert
+
+v3 - v4 13.08.2013
+* Makefile und build-script angepasst, fritz kann jetzt gegen die libsodium gelinkt werden. Download von https://github.com/jedisct1/libsodium
+
+v4 - v5 23.08.2013
+Allgemein:
+* Codebereinigungen für besseren Lesbarkeit
+* secure_fopen(), secure_fclose(), secure_randombytes()
+* Programminfoleiste verändert
+Bugs:
+* Fehler in der GUI beseitigt: byte_equal_notimingattack() wieder eingefügt
+* Fehler in der GUI beseitigt: Verschlüsseln einer Datei -> Progress-Fenster hat sich bei Abbruch nicht von selbst geschlossen
+* Fehler in der GUI beseitigt: beim Beenden der Schlüsselverwaltung ging die Schlüssel-Auswahl verloren
+* Fehler in der GUI beseitigt: bei Eingabe von MAX_INPUT Bytes passt der verschlüsselte Text nicht in das Textfeld -> Klartext wird vor dem Verschlüsseln entsprechend gekürzt.
+Neue Funktionen:
+* Whitespaces werden bei der Eingabe von verschlüsseltem Text jetzt ignoriert, da manche Mailclients den verschlüsselten Text umbrechen.
+* Selbsttest der Kryptofunkionen beim Programmstart
+* Zufällige Schlüssel werden nun mit Raute (#) am Anfang des Namens markiert. Beim Kopieren eines solchen Schlüssels wird eine Warnung ausgegeben, da es keinen Sinn macht, solche Schlüssel weiterzugeben.

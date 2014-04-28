@@ -21,3 +21,7 @@ Neue Funktionen:
 * Whitespaces werden bei der Eingabe von verschlüsseltem Text jetzt ignoriert, da manche Mailclients den verschlüsselten Text umbrechen.
 * Selbsttest der Kryptofunkionen beim Programmstart
 * Zufällige Schlüssel werden nun mit Raute (#) am Anfang des Namens markiert. Beim Kopieren eines solchen Schlüssels wird eine Warnung ausgegeben, da es keinen Sinn macht, solche Schlüssel weiterzugeben.
+
+v5 - v6 26.04.2014
+* Unterstützung für Mehrsprachigkeit hinzugefügt (deutsch, englisch)
+** neue Übersetzungen können erstellt werden, indem die Datei english.h kopiert, übersetzt und das Makefile angepasst wird.

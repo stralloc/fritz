@@ -44,24 +44,8 @@
 	#include "sodium.h"
 #endif
 	
-#define DIALOG_TITLE "Fritz v5"
-#define URL "http://xn--njr-tna.de/Projekte/fritz.html?from=v5"
-#define KEY_PRIV "geheimer_schluessel.key"
-#define KEY_PRIV_WARNING "ACHTUNG: DEN INHALT DIESER DATEI NIEMALS WEITERGEBEN, ES IST DEIN GEHEIMER SCHLÜSSEL."
-#define KEY_PUB "oeffentlicher_schluessel.key"
-#define KEYFILE_PATH_STORE "schluesseldatei.txt"
-#define KEYFILE_EMPTY_TEXT "[Keine Schlüsseldatei ausgewählt]"
-#define KEY_PUB_TXT "Eigener Schlüssel"
-#define NEUER_KEY_TXT "Neuen Schlüssel anlegen"
-#define BUTTON_ENCR "Verschlüsseln"
-#define BUTTON_DECR "Entschlüsseln"
-#define ERROR_CRYPTO_BOX "Fehler beim Verschlüsseln."
-#define ERROR_CRYPTO_BOX_OPEN "Entschlüsseln des Textes nicht möglich.\n\n" \
-"Solltest Du den Text entschlüsseln wollen, dann ist es sehr wahrscheinlich, dass der verschlüsselte Text auf dem Weg zu Dir verändert wurde, oder Du den falschen Schlüssel ausgewählt hast.\n\n" \
-"Wenn Du den Text verschlüsseln wolltest, hänge bitte ein Leerzeichen ran, damit dieser als Text zum Verschlüsseln erkannt wird."
-
-#define ERROR_CRYPTO_BOX_OPEN_FILE "Entschlüsseln der Datei nicht möglich.\n\n" \
-"Es ist sehr wahrscheinlich, dass die verschlüsselte Datei auf dem Weg zu Dir verändert wurde, oder Du den falschen Schlüssel ausgewählt hast."
+#define DIALOG_TITLE "Fritz v6"
+#define URL "http://xn--njr-tna.de/Projekte/fritz.html?from=v6"
 
 #define MAX_NAME 128
 #define MAX_INPUT 131068
@@ -116,16 +100,6 @@ static unsigned char password_hash[crypto_hash_sha256_BYTES];
 #define PASSWORD_SPECIAL_CHARACTER 5
 #define PASSWORD_NOT_EQUAL 6
 #define PASSWORD_NOT_CHANGED 7
-static char *password_errors[] = {
-"Kennwort ok.",
-"Kennwort muss mindestens 10 Zeichen lang sein.",
-"Kennwort enthält nicht genug kleine Buchstaben.",
-"Kennwort enthält nicht genug Großbuchstaben.",
-"Kennwort enthält nicht genug Zahlen.",
-"Kennwort enthält nicht genug Sonderzeichen.",
-"Kennwörter stimmen nicht überein.",
-"Kennwort entspricht dem alten Kennwort.",
-NULL};
 
 static unsigned int check_passwords(const char *password1,const char *password2);
 static void copyToClipboard(const char *str);
@@ -164,7 +138,7 @@ static void secure_fclose(FILE *fd, char *buf, size_t buf_len) {
 	return;
 }
 
-void secure_randombytes(unsigned char *x,DWORD xlen) {
+void secure_randombytes(unsigned char *x,size_t xlen) {
 
 	size_t i;
 	MEMORYSTATUS memstat;
@@ -395,7 +369,7 @@ void thread_hash_file(void *param) {
 		progress = GetDlgItem(cryptfile.progress_window, PROGRESS_DLG3);
 
 		// set defaults
-		SetWindowTextA(cryptfile.progress_window, "Lese Schlüsseldatei");
+		SetWindowTextA(cryptfile.progress_window, MSG_READ_KEYFILE);
 		
 		// Keyfile is hidden
 		SendDlgItemMessageA(cryptfile.progress_window, STATIC_DLG3_PATH, WM_SETTEXT, 0, (LPARAM)""); 
@@ -408,7 +382,7 @@ void thread_hash_file(void *param) {
 
 	fd = secure_fopen(cryptfile.path,"rb",file_buf,sizeof file_buf);
 	if(!fd) {
-		MessageBoxA(message_out, "Schlüsseldatei kann nicht gelesen werden.", "Fehler", MB_ICONERROR|MB_OK);
+		MessageBoxA(message_out, MSG_CAN_NOT_READ_KEYFILE, MSG_ERROR, MB_ICONERROR|MB_OK);
 		cryptfile.type = FALSE;
 		goto end_hashfile;
 	}
@@ -534,7 +508,7 @@ void thread_crypt_file(void *param) {
 	// insert .key
 	len = strlen(path);
 	if(len==0) {
-		MessageBoxA(message_out, "Es ist kein Schlüssel ausgewählt.", "Fehler", MB_ICONERROR|MB_OK);
+		MessageBoxA(message_out, MSG_NO_KEY_SELECTED, MSG_ERROR, MB_ICONERROR|MB_OK);
 		goto end_dropfile;
 	} else if(len>=4) {
 		if(byte_diff(path+len-4,4,".key")!=0) {
@@ -551,8 +525,8 @@ void thread_crypt_file(void *param) {
 		rand_mem(key64,KEY64_SIZE);
 		secure_fclose(file,file_buf,sizeof file_buf);
 	} else {
-		snprintf(message,sizeof(message),"Schlüssel %s kann nicht geladen werden.",path);
-		MessageBoxA(message_out, message, "Fehler", MB_ICONERROR|MB_OK);
+		snprintf(message, sizeof(message), MSG_CAN_NOT_LOAD_KEY, path);
+		MessageBoxA(message_out, message, MSG_ERROR, MB_ICONERROR|MB_OK);
 		goto end_dropfile;
 	}
 
@@ -565,8 +539,8 @@ void thread_crypt_file(void *param) {
 		rand_mem(key64,KEY64_SIZE);
 		secure_fclose(file,file_buf,sizeof file_buf);
 	} else {
-		snprintf(message,sizeof(message),"Schlüssel %s kann nicht geladen werden.",KEY_PRIV);
-		MessageBoxA(message_out, message, "Fehler", MB_ICONERROR|MB_OK);
+		snprintf(message, sizeof(message), MSG_CAN_NOT_LOAD_KEY, KEY_PRIV);
+		MessageBoxA(message_out, message, MSG_ERROR, MB_ICONERROR|MB_OK);
 		goto end_dropfile;
 	}
 	
@@ -597,7 +571,7 @@ void thread_crypt_file(void *param) {
 
 				stralloc_zero(&sabuf);
 				if(crypto_box_open(sabuf.s,sabuf64.s,sabuf64.len+crypto_box_BOXZEROBYTES,n,pk,sk)!=0) {
-					MessageBoxA(message_out, ERROR_CRYPTO_BOX_OPEN_FILE, "Fehler", MB_ICONERROR|MB_OK);
+					MessageBoxA(message_out, ERROR_CRYPTO_BOX_OPEN_FILE, MSG_ERROR, MB_ICONERROR|MB_OK);
 					goto end_dropfile;
 				}
 				sabuf.len = sabuf64.len - 16;
@@ -613,21 +587,21 @@ void thread_crypt_file(void *param) {
 
 			if(stat(path_out,&stbuf)==0) {
 		
-				snprintf(message,sizeof(message),"Ziel-Datei %s existiert bereits, soll diese überschrieben werden?",path_out);
+				snprintf(message, sizeof(message), MSG_DEST_FILE_EXISTS_OVERWRITE, path_out);
 	
-				if(MessageBoxA(message_out, message, "Ziel-Datei überschreiben?", MB_ICONQUESTION|MB_OKCANCEL) != IDOK) {
+				if(MessageBoxA(message_out, message, MSG_DEST_FILE_OVERWRITE, MB_ICONQUESTION|MB_OKCANCEL) != IDOK) {
 					goto end_dropfile;
 				}
 			}
 		
 			out = secure_fopen(path_out,"wb",file_out, sizeof file_out);
 			if(out) {
-				snprintf(message,sizeof(message),"Datei %s mit dem Schlüssel von %s entschlüsseln?",path,name);
+				snprintf(message, sizeof(message), MSG_FILE_DECRYPT_WITH_KEY, path,name);
 		
-				if(MessageBoxA(message_out, message, "Datei entschlüsseln", MB_ICONQUESTION|MB_OKCANCEL) == IDOK) {
+				if(MessageBoxA(message_out, message, MSG_FILE_DECRYPT, MB_ICONQUESTION|MB_OKCANCEL) == IDOK) {
 					
 					if(!stralloc_ready(&sabuf,FILE_BLOCK)) {
-						MessageBoxA(message_out, "Zu wenig Hauptspeicher.", "Fehler", MB_ICONERROR|MB_OK);
+						MessageBoxA(message_out, MSG_OUT_OF_MEM, MSG_ERROR, MB_ICONERROR|MB_OK);
 						goto end_dropfile;
 					}
 					
@@ -635,7 +609,7 @@ void thread_crypt_file(void *param) {
 					
 					readed = 0;
 					if(cryptfile.size>DROP_DIALOG_SIZE) {
-						SetWindowTextA(cryptfile.progress_window, "Datei entschlüsseln");
+						SetWindowTextA(cryptfile.progress_window, MSG_FILE_DECRYPT);
 						SendDlgItemMessageA(cryptfile.progress_window, STATIC_DLG3_PATH, WM_SETTEXT, 0, (LPARAM)path);
 						SendDlgItemMessageA(cryptfile.progress_window, STATIC_DLG3_SPEED, WM_SETTEXT, 0, (LPARAM)"0.00 MB/s");
 						SendMessage(progress, PBM_SETPOS, 0, (LPARAM)0);
@@ -679,14 +653,14 @@ void thread_crypt_file(void *param) {
 						len = fread(sabuf.s+crypto_box_BOXZEROBYTES,1,FILE_BLOCK+16,file);
 						
 						if(crypto_box_open_afternm(sabuf64.s,sabuf.s,len+crypto_box_BOXZEROBYTES,n,k)) {
-							MessageBoxA(message_out, ERROR_CRYPTO_BOX_OPEN_FILE, "Fehler", MB_ICONERROR|MB_OK);
+							MessageBoxA(message_out, ERROR_CRYPTO_BOX_OPEN_FILE, MSG_ERROR, MB_ICONERROR|MB_OK);
 							secure_fclose(out,file_out,sizeof file_out);
 							DeleteFileA(path_out);
 							goto end_dropfile;
 						}
 
 						if(fwrite(sabuf64.s+crypto_box_ZEROBYTES,1,len-16,out)!=len-16) {
-							MessageBoxA(message_out, "Fehler beim Schreiben.", "Fehler", MB_ICONERROR|MB_OK);							
+							MessageBoxA(message_out, MSG_WRITE_ERROR, MSG_ERROR, MB_ICONERROR|MB_OK);							
 							secure_fclose(out,file_out,sizeof file_out);
 							DeleteFileA(path_out);			
 							goto end_dropfile;				
@@ -721,13 +695,13 @@ void thread_crypt_file(void *param) {
 					secure_fclose(file,file_buf,sizeof file_buf);
 				}
 			} else {
-				snprintf(message,sizeof(message),"Zieldatei %s kann nicht angelegt werden.",path_out);
-				MessageBoxA(message_out, message, "Fehler", MB_ICONERROR|MB_OK);
+				snprintf(message, sizeof(message), MSG_CAN_NOT_CREATE_DEST_FILE, path_out);
+				MessageBoxA(message_out, message, MSG_ERROR, MB_ICONERROR|MB_OK);
 				goto end_dropfile;
 			}
 		} else {
-			snprintf(message,sizeof(message),"Quelldatei %s kann nicht gelesen werden.",path_out);
-			MessageBoxA(message_out, message, "Fehler", MB_ICONERROR|MB_OK);
+			snprintf(message, sizeof(message), MSG_CAN_NOT_READ_SRC_FILE, path_out);
+			MessageBoxA(message_out, message, MSG_ERROR, MB_ICONERROR|MB_OK);
 			goto end_dropfile;
 		}
 	} else { // encrypt
@@ -773,8 +747,8 @@ void thread_crypt_file(void *param) {
 		} else {
 			if(strlen(ext)>0) strncat(path_out,ext,MAX_PATH);
 		
-			snprintf(message,sizeof(message),"Dateiname konnte nicht verschlüsselt werden, da bei Windows der Pfad einer Datei maximal %d Zeichen lang sein darf.\n\nDie verschlüsselte Datei wird als %s.fritz gespeichert.",MAX_PATH,path_out + len);
-			MessageBoxA(message_out, message, "Pfad zu lang", MB_ICONWARNING|MB_OK);
+			snprintf(message,sizeof(message), MSG_FILENAME_TO_LONG,MAX_PATH,path_out + len);
+			MessageBoxA(message_out, message, MSG_PATH_TO_LONG, MB_ICONWARNING|MB_OK);
 		}
 		strncat(path_out,".fritz",MAX_PATH);
 
@@ -782,21 +756,21 @@ void thread_crypt_file(void *param) {
 		if(file) {
 			if(stat(path_out,&stbuf)==0) {
 		
-				snprintf(message,sizeof(message),"Ziel-Datei %s existiert bereits, soll diese überschrieben werden?",path_out);
+				snprintf(message, sizeof(message), MSG_DEST_FILE_EXISTS_OVERWRITE, path_out);
 	
-				if(MessageBoxA(message_out, message, "Ziel-Datei überschreiben?", MB_ICONQUESTION|MB_OKCANCEL) != IDOK) {
+				if(MessageBoxA(message_out, message, MSG_DEST_FILE_OVERWRITE, MB_ICONQUESTION|MB_OKCANCEL) != IDOK) {
 					goto end_dropfile;
 				}
 			}
 
 			out = secure_fopen(path_out,"wb",file_out,sizeof file_out);
 			if(out) {
-				snprintf(message,sizeof(message),"Datei %s mit dem Schlüssel von %s verschlüsseln?",path,name);
+				snprintf(message, sizeof(message), MSG_FILE_ENCRYPT_WITH_KEY, path, name);
 		
-				if(MessageBoxA(message_out, message, "Datei verschlüsseln", MB_ICONQUESTION|MB_OKCANCEL) == IDOK) {
+				if(MessageBoxA(message_out, message, MSG_FILE_ENCRYPT, MB_ICONQUESTION|MB_OKCANCEL) == IDOK) {
 					
 					if(!stralloc_ready(&sabuf,FILE_BLOCK)) {
-						MessageBoxA(message_out, "Zu wenig Hauptspeicher.", "Fehler", MB_ICONERROR|MB_OK);
+						MessageBoxA(message_out, MSG_OUT_OF_MEM, MSG_ERROR, MB_ICONERROR|MB_OK);
 						goto end_dropfile;
 					}
 					
@@ -812,7 +786,7 @@ void thread_crypt_file(void *param) {
 					
 					readed = 0;
 					if(cryptfile.size>DROP_DIALOG_SIZE) {
-						SetWindowTextA(cryptfile.progress_window, "Datei verschlüsseln");
+						SetWindowTextA(cryptfile.progress_window, MSG_FILE_ENCRYPT);
 						SendDlgItemMessageA(cryptfile.progress_window, STATIC_DLG3_PATH, WM_SETTEXT, 0, (LPARAM)path);
 						SendDlgItemMessageA(cryptfile.progress_window, STATIC_DLG3_SPEED, WM_SETTEXT, 0, (LPARAM)"0.00 MB/s");
 						SendMessage(progress, PBM_SETPOS, 0, (LPARAM)0);
@@ -847,14 +821,14 @@ void thread_crypt_file(void *param) {
 						crypto_box_afternm(sabuf64.s,sabuf.s,len+crypto_box_ZEROBYTES,n,k);
 						
 						if(fwrite(n,1,crypto_box_NONCEBYTES,out)!=crypto_box_NONCEBYTES) {
-							MessageBoxA(message_out, "Fehler beim Schreiben.", "Fehler", MB_ICONERROR|MB_OK);							
+							MessageBoxA(message_out, MSG_WRITE_ERROR, MSG_ERROR, MB_ICONERROR|MB_OK);							
 							secure_fclose(out,file_out,sizeof file_out);
 							DeleteFileA(path_out);			
 							goto end_dropfile;				
 						}
 						
 						if(fwrite(sabuf64.s+crypto_box_BOXZEROBYTES,1,len+16,out)!=len+16) {									
-							MessageBoxA(message_out, "Fehler beim Schreiben.", "Fehler", MB_ICONERROR|MB_OK);
+							MessageBoxA(message_out, MSG_WRITE_ERROR, MSG_ERROR, MB_ICONERROR|MB_OK);
 							secure_fclose(out,file_out,sizeof file_out);
 							DeleteFileA(path_out);
 							goto end_dropfile;
@@ -897,13 +871,13 @@ void thread_crypt_file(void *param) {
 					goto end_dropfile;
 				}
 			} else {
-				snprintf(message,sizeof(message),"Zieldatei %s kann nicht angelegt werden.",path_out);
-				MessageBoxA(message_out, message, "Fehler", MB_ICONERROR|MB_OK);
+				snprintf(message, sizeof(message), MSG_CAN_NOT_CREATE_DEST_FILE, path_out);
+				MessageBoxA(message_out, message, MSG_ERROR, MB_ICONERROR|MB_OK);
 				goto end_dropfile;
 			}
 		} else {
-			snprintf(message,sizeof(message),"Quelldatei %s kann nicht gelesen werden.",path);
-			MessageBoxA(message_out, message, "Fehler", MB_ICONERROR|MB_OK);
+			snprintf(message,sizeof(message), MSG_CAN_NOT_READ_SRC_FILE, path);
+			MessageBoxA(message_out, message, MSG_ERROR, MB_ICONERROR|MB_OK);
 			goto end_dropfile;
 		}
 	}
@@ -981,8 +955,8 @@ void thread_crypt_message(void *param) {
 		rand_mem(key64,KEY64_SIZE);
 		secure_fclose(file,file_buf,sizeof file_buf);
 	} else {
-		snprintf(message,sizeof(message),"Schlüssel %s kann nicht geladen werden.",path);
-		MessageBoxA(cryptmessage.window, message, "Fehler", MB_ICONERROR|MB_OK);
+		snprintf(message, sizeof(message), MSG_CAN_NOT_LOAD_KEY, path);
+		MessageBoxA(cryptmessage.window, message, MSG_ERROR, MB_ICONERROR|MB_OK);
 		goto end_crypt;
 	}
 
@@ -994,8 +968,8 @@ void thread_crypt_message(void *param) {
 		rand_mem(key64,KEY64_SIZE);
 		secure_fclose(file,file_buf,sizeof file_buf);
 	} else {
-		snprintf(message,sizeof(message),"Schlüssel %s kann nicht geladen werden.",KEY_PRIV);
-		MessageBoxA(cryptmessage.window, message, "Fehler", MB_ICONERROR|MB_OK);
+		snprintf(message, sizeof(message), MSG_CAN_NOT_LOAD_KEY, KEY_PRIV);
+		MessageBoxA(cryptmessage.window, message, MSG_ERROR, MB_ICONERROR|MB_OK);
 		goto end_crypt;
 	}
 
@@ -1019,7 +993,7 @@ void thread_crypt_message(void *param) {
 
 		stralloc_zero(&sabuf);
 		if(crypto_box_open(sabuf.s,sabuf64.s,sabuf64.len+crypto_box_BOXZEROBYTES,n,pk,sk)!=0) {
-			MessageBoxA(cryptmessage.window, ERROR_CRYPTO_BOX_OPEN, "Fehler", MB_ICONERROR|MB_OK);
+			MessageBoxA(cryptmessage.window, ERROR_CRYPTO_BOX_OPEN, MSG_ERROR, MB_ICONERROR|MB_OK);
 			goto end_crypt;
 		}
 
@@ -1041,7 +1015,7 @@ encrypt:
 		
 		stralloc_zero(&sabuf);
 		if(crypto_box(sabuf.s,sabuf64.s,sabuf64.len+crypto_box_ZEROBYTES,n,pk,sk)!=0) {
-			MessageBoxA(cryptmessage.window, ERROR_CRYPTO_BOX, "Fehler", MB_ICONERROR|MB_OK);
+			MessageBoxA(cryptmessage.window, ERROR_CRYPTO_BOX, MSG_ERROR, MB_ICONERROR|MB_OK);
 			goto end_crypt;
 		}
 		sabuf.len = sabuf64.len + 16 + crypto_box_BOXZEROBYTES;
@@ -1134,8 +1108,15 @@ INT_PTR CALLBACK DialogCreatePassword(HWND window, UINT uMsg, WPARAM wParam, LPA
 			
 			SendDlgItemMessageA(window, STATIC_DLG4_PATH, WM_SETTEXT, 0, (LPARAM)KEYFILE_EMPTY_TEXT);
 			
-			SetWindowTextA(window, "Neues Kennwort eingeben");
+			SetWindowTextA(window, MSG_INSERT_NEW_PASSWORD);
 
+			SetWindowTextA(GetDlgItem(window,STATIC_DLG4_TEXT1),TXT_NEW_PASSWORD);
+			SetWindowTextA(GetDlgItem(window,STATIC_DLG4_TEXT2),TXT_REPEAT_NEW_PASSWORD);
+			SetWindowTextA(GetDlgItem(window,BUTTON_DLG4_OK),TXT_OK);
+			SetWindowTextA(GetDlgItem(window,BUTTON_DLG4_ABORT),TXT_ABORT);
+			SetWindowTextA(GetDlgItem(window,STATIC_DLG4_TEXT3),TXT_KEYFILE);
+			SetWindowTextA(GetDlgItem(window,BUTTON_DLG4_CHANGE),TXT_CHANGE);
+			
 			EnableWindow(GetDlgItem(window, BUTTON_DLG4_OK),FALSE);
 
 			SetFocus(GetDlgItem(window, INPUT_DLG4_PASSWD1));
@@ -1252,16 +1233,13 @@ INT_PTR CALLBACK DialogCreatePassword(HWND window, UINT uMsg, WPARAM wParam, LPA
 					SetCurrentDirectoryA(old_path);
 				return TRUE;
 				case BUTTON_DLG4_HELP1:
-					snprintf(message,sizeof(message),
-"Das neue  Kennwort muss mindestens %d Zeichen lang sein, es müssen jeweils mindestens %d kleine Buchstaben, große Buchstaben, Sonderzeichen und Zahlen enthalten sein. Das neue Kennwort muss zur Wiederholung zweimal eingegeben werden.",MIN_PASSWORD_LEN,MIN_COUNT);
+					snprintf(message, sizeof(message), MSG_PASSWORD_RULES, MIN_PASSWORD_LEN,MIN_COUNT);
 				
-					MessageBoxA(NULL, message, "Neues Kennwort", MB_ICONINFORMATION|MB_OK);
+					MessageBoxA(NULL, message, MSG_NEW_PASSWORD, MB_ICONINFORMATION|MB_OK);
 				return TRUE;
 				case BUTTON_DLG4_HELP2:
 				
-					MessageBoxA(NULL, "Zusätzlich zu dem Kennwort kann eine Schlüsseldatei mit hinterlegt werden, um die Sicherheit Deines geheimen Schlüssels weiter zu erhöhen.\n\n"
-"Beachte bitte, dass die Schlüsseldatei niemals verändert und verschoben werden darf, da Du Deinen Schlüssel sonst nicht mehr benutzen kannst.\n\n"
-"Um die Verknüpfung mit einer Schlüsseldatei wieder zu entfernen, ändere Dein Kennwort ohne Angabe einer Schlüsseldatei im neuen Kennwort.", "Schlüsseldateien", MB_ICONINFORMATION|MB_OK);
+					MessageBoxA(NULL, MSG_KEYFILE, MSG_KEYFILE_TITLE, MB_ICONINFORMATION|MB_OK);
 				return TRUE;
 				case BUTTON_DLG4_ABORT:
 					EndDialog(window,0);
@@ -1316,6 +1294,15 @@ INT_PTR CALLBACK DialogManageKeys(HWND window, UINT uMsg, WPARAM wParam, LPARAM 
 				0, 0, 
 				SWP_NOSIZE);
 
+			SetWindowTextA(window, DIALOG_MANAGE_KEYS_TITLE);
+			SetWindowTextA(GetDlgItem(window,BUTTON_DLG2_COPY),TXT_COPY);
+			SetWindowTextA(GetDlgItem(window,BUTTON_DLG2_CHANGE),TXT_CHANGE_PASSWORD_KEYFILE);
+			SetWindowTextA(GetDlgItem(window,BUTTON_DLG2_DELETE),TXT_DELETE);
+			SetWindowTextA(GetDlgItem(window,BUTTON_DLG2_SAVE),TXT_SAVE);
+			SetWindowTextA(GetDlgItem(window,BUTTON_DLG2_ABORT),TXT_ABORT);
+			SetWindowTextA(GetDlgItem(window,IDC_GRP1),TXT_NAME);
+			SetWindowTextA(GetDlgItem(window,IDC_GRP2),TXT_KEYS);
+			
 			SendMessage(window, WM_SETICON, ICON_SMALL, (LPARAM)hicon);
 			
 			SendDlgItemMessage(window, INPUT_DLG2_TEXT_NAME, EM_LIMITTEXT,MAX_NAME,0);
@@ -1358,8 +1345,8 @@ INT_PTR CALLBACK DialogManageKeys(HWND window, UINT uMsg, WPARAM wParam, LPARAM 
 						rand_mem(key64,KEY64_SIZE);
 						secure_fclose(file,file_buf,sizeof file_buf);
 					} else {
-						snprintf(message,sizeof(message),"Schlüssel %s kann nicht geladen werden.",KEY_PRIV);
-						MessageBoxA(NULL, message, "Fehler", MB_ICONERROR|MB_OK);
+						snprintf(message, sizeof(message), MSG_CAN_NOT_LOAD_KEY, KEY_PRIV);
+						MessageBoxA(NULL, message, MSG_ERROR, MB_ICONERROR|MB_OK);
 						return TRUE;
 					}
 					
@@ -1393,9 +1380,9 @@ INT_PTR CALLBACK DialogManageKeys(HWND window, UINT uMsg, WPARAM wParam, LPARAM 
 						if(key_file_hash[i]!=0) break;
 					}
 					if(i==0) {
-						MessageBoxA(NULL, "Kennwort erfolgreich geändert. Es ist keine Schlüsseldatei hinterlegt.", "Neues Kennwort", MB_ICONINFORMATION|MB_OK);
+						MessageBoxA(NULL, MSG_PASSWORD_CHANGED_NO_KEYFILE, MSG_NEW_PASSWORD, MB_ICONINFORMATION|MB_OK);
 					} else {
-						MessageBoxA(NULL, "Kennwort erfolgreich geändert. Bitte die hinterlegte Schlüsseldatei nicht mehr verändern, da Dein geheimer Schlüssel sonst nicht mehr geöffnet werden kann.", "Neues Kennwort und Schlüsseldatei", MB_ICONINFORMATION|MB_OK);
+						MessageBoxA(NULL, MSG_PASSWORD_CHANGED_KEYFILE, MSG_NEW_PASSWORD_KEYFILE, MB_ICONINFORMATION|MB_OK);
 					}
 				return TRUE;
 				case BUTTON_DLG2_DELETE:
@@ -1413,8 +1400,8 @@ INT_PTR CALLBACK DialogManageKeys(HWND window, UINT uMsg, WPARAM wParam, LPARAM 
 						strncat(path,".key",MAX_NAME);
 					}
 
-					snprintf(message,sizeof(message),"Schlüssel von %s endgültig löschen?",name);
-					if(MessageBoxA(window, message, "Schlüssel endgültig löschen?", MB_ICONQUESTION | MB_YESNO) == IDYES) {
+					snprintf(message,sizeof(message), MSG_REMOVE_KEY_FROM, name);
+					if(MessageBoxA(window, message, MSG_REMOVE_KEY, MB_ICONQUESTION | MB_YESNO) == IDYES) {
 
 						rand_mem(key64,KEY64_SIZE);
 						file = secure_fopen(path,"w",file_buf,sizeof file_buf);
@@ -1424,7 +1411,7 @@ INT_PTR CALLBACK DialogManageKeys(HWND window, UINT uMsg, WPARAM wParam, LPARAM 
 						}
 					
 						if(DeleteFileA(path)==0) {
-							MessageBoxA(window, "Fehler beim Löschen des Schlüssels.", "Fehler", MB_ICONERROR);
+							MessageBoxA(window, MSG_REMOVE_KEY_ERROR, MSG_ERROR, MB_ICONERROR);
 							return TRUE;
 						}
 						EndDialog(window,0);		
@@ -1455,7 +1442,7 @@ INT_PTR CALLBACK DialogManageKeys(HWND window, UINT uMsg, WPARAM wParam, LPARAM 
 						
 						SendDlgItemMessageA(window, INPUT_DLG2_TEXT_NAME, WM_GETTEXT, sizeof(name), (LPARAM)name);
 						if(name[0]=='#') {
-							MessageBoxA(NULL, "Achtung: Du hast einen zufällig erzeugten Schlüssel kopiert.\n\nZufällige Schlüssel sind dazu gedacht, Dateien sicher abzulegen. Da jedoch nur Du mit Deinem zufällig erzeugten Schlüssel und Deinem privaten Schlüssel diese Dateien entschlüsseln kannst, macht es keinen Sinn, diesen zufälligen Schlüssel weiterzugeben.", "Zufällig erzeugten Schlüssel kopiert", MB_ICONWARNING|MB_OK);
+							MessageBoxA(NULL, MSG_RANDOM_KEY_COPIED, MSG_RANDOM_KEY, MB_ICONWARNING|MB_OK);
 						}						
 					}
 					return TRUE;
@@ -1470,10 +1457,10 @@ INT_PTR CALLBACK DialogManageKeys(HWND window, UINT uMsg, WPARAM wParam, LPARAM 
 							
 							SendDlgItemMessageA(window, INPUT_DLG2_TEXT_NAME, WM_SETTEXT, 0, (LPARAM)NULL);
 							SendDlgItemMessageA(window, INPUT_DLG2_TEXT_KEY, WM_SETTEXT, 0, (LPARAM)NULL);
-							SendDlgItemMessageA(window, BUTTON_DLG2_COPY, WM_SETTEXT, 0, (LPARAM)"Erstellen");
+							SendDlgItemMessageA(window, BUTTON_DLG2_COPY, WM_SETTEXT, 0, (LPARAM)MSG_CREATE);
 							return TRUE;
 						} else {
-							SendDlgItemMessageA(window, BUTTON_DLG2_COPY, WM_SETTEXT, 0, (LPARAM)"Kopieren");
+							SendDlgItemMessageA(window, BUTTON_DLG2_COPY, WM_SETTEXT, 0, (LPARAM)MSG_COPY);
 						}
 						
 						if(strcmp(name,KEY_PUB_TXT)==0) {
@@ -1528,7 +1515,7 @@ INT_PTR CALLBACK DialogManageKeys(HWND window, UINT uMsg, WPARAM wParam, LPARAM 
 					}
 				
 					if(stat(name,&stbuf)==0) {
-						if(MessageBoxA(window, "Schlüssel existiert bereits, soll er überschrieben werden?", "Überschreiben?", MB_ICONQUESTION|MB_YESNO) == IDNO) {
+						if(MessageBoxA(window, MSG_KEY_EXISTS, MSG_OVERWRITE, MB_ICONQUESTION|MB_YESNO) == IDNO) {
 							EndDialog(window,0);
 							return FALSE;
 						}
@@ -1536,7 +1523,7 @@ INT_PTR CALLBACK DialogManageKeys(HWND window, UINT uMsg, WPARAM wParam, LPARAM 
 					
 					SendDlgItemMessageA(window, INPUT_DLG2_TEXT_KEY, WM_GETTEXT, sizeof(key64), (LPARAM)key64);
 					if(!isBase64(key64,BASE64_NORMAL)) {
-						MessageBoxA(window, "Schlüssel ist fehlerhaft und kann nicht gespeichert werden.", "Fehler", MB_ICONERROR|MB_OK);
+						MessageBoxA(window, MSG_KEY_CORRUPT, MSG_ERROR, MB_ICONERROR|MB_OK);
 						rand_mem(key64,KEY64_SIZE);
 						EndDialog(window,0);
 						return FALSE;
@@ -1544,7 +1531,7 @@ INT_PTR CALLBACK DialogManageKeys(HWND window, UINT uMsg, WPARAM wParam, LPARAM 
 					
 					scan_base64(key64,key,&len);
 					if(len!=crypto_box_PUBLICKEYBYTES) {
-						MessageBoxA(window, "Schlüssel ist fehlerhaft und kann nicht gespeichert werden.", "Fehler", MB_ICONERROR|MB_OK);
+						MessageBoxA(window, MSG_KEY_CORRUPT, MSG_ERROR, MB_ICONERROR|MB_OK);
 						rand_mem(key64,KEY64_SIZE);
 						rand_mem(key,sizeof(key));
 						EndDialog(window,0);
@@ -1553,7 +1540,7 @@ INT_PTR CALLBACK DialogManageKeys(HWND window, UINT uMsg, WPARAM wParam, LPARAM 
 					
 					file = secure_fopen(name,"w",file_buf,sizeof file_buf);
 					if(!file) {
-						MessageBoxA(window, "Schlüssel kann nicht gespeichert werden.\n\nZeichen wie \\ oder / dürfen im Namen nicht verwendet werden.", "Fehler", MB_ICONERROR|MB_OK);
+						MessageBoxA(window, MSG_KEY_NAME_CORRUPT, MSG_ERROR, MB_ICONERROR|MB_OK);
 						rand_mem(key64,KEY64_SIZE);
 						rand_mem(key,sizeof(key));
 						EndDialog(window,0);
@@ -1603,7 +1590,9 @@ INT_PTR CALLBACK DialogProgressFile(HWND window, UINT uMsg, WPARAM wParam, LPARA
 				SWP_NOSIZE);
 
 			cryptfile.progress_window = window;
-				
+			
+			SetWindowTextA(GetDlgItem(window,BUTTON_DLG3_ABORT),TXT_ABORT);
+			
 			SendMessage(window, WM_SETICON, ICON_SMALL, (LPARAM)hicon);
 		return TRUE;
 		case WM_COMMAND:
@@ -1675,6 +1664,13 @@ INT_PTR CALLBACK DialogMain(HWND window, UINT uMsg, WPARAM wParam, LPARAM lParam
 				DragAcceptFiles(window,FALSE);
 			}
 			
+			SetWindowTextA(GetDlgItem(window,BUTTON_DLG1_MANAGE_KEYS),TXT_MANAGE);
+			SetWindowTextA(GetDlgItem(window,BUTTON_DLG1_CRYPT),TXT_ENCRYPT);
+			SetWindowTextA(GetDlgItem(window,BUTTON_DLG1_DELETE),TXT_DELETE);
+			SetWindowTextA(GetDlgItem(window,BUTTON_DLG1_COPY),TXT_COPY);
+			SetWindowTextA(GetDlgItem(window,IDC_GRP),TXT_KEYRING);
+			SetWindowTextA(GetDlgItem(window,STATIC_DLG1_TEXT),TXT_MORE_INFOS);
+			
 			// mingw can not compile SysLink-Objects
 			hwndLink = CreateWindowExA(0, WC_LINK, "<A HREF=\""URL"\">njör.de</A>", WS_CHILD | WS_VISIBLE | WS_TABSTOP,235,280,71,18, window, NULL, GetModuleHandle(NULL) , NULL);
 			
@@ -1697,7 +1693,7 @@ INT_PTR CALLBACK DialogMain(HWND window, UINT uMsg, WPARAM wParam, LPARAM lParam
 			
 			if(stat(cryptfile.path,&stbuf)==0) {
 				if(!(stbuf.st_mode & _S_IFREG)) {
-					MessageBoxA(window, "Es kann nur eine Datei verschlüsselt werden.", "Fehler", MB_ICONERROR|MB_OK);
+					MessageBoxA(window, MSG_ERROR_ONLY_FILE, MSG_ERROR, MB_ICONERROR|MB_OK);
 					return TRUE;
 				}
 			} else return TRUE;
@@ -1828,7 +1824,7 @@ INT_PTR CALLBACK DialogMain(HWND window, UINT uMsg, WPARAM wParam, LPARAM lParam
 						if(len>=MAX_INPUT) {
 							sabuf.len = MAX_INPUT;
 							stralloc_0(&sabuf);
-							MessageBoxA(NULL, "Deine Eingabe ist zum Verschlüsseln zu lang und wurde um einige Bytes gekürzt.", "Eingabe zu lang", MB_ICONWARNING|MB_OK);
+							MessageBoxA(NULL, MSG_MESSAGE_TO_LONG, MSG_MESSAGE_TO_LONG_TITLE, MB_ICONWARNING|MB_OK);
 						}
 						cryptmessage.type = ENCRYPT;
 					}
@@ -1887,7 +1883,11 @@ INT_PTR CALLBACK DialogGetPassword(HWND window, UINT uMsg, WPARAM wParam, LPARAM
 				rcOwner.top + (rc.bottom / 2), 
 				0, 0, 
 				SWP_NOSIZE);
-				
+			
+			SetWindowTextA(GetDlgItem(window,STATIC_DLG5_TEXT),TXT_PASSWORD_FOR_PRIVATE_KEY);
+			SetWindowTextA(GetDlgItem(window,BUTTON_DLG5_OK),TXT_OK);
+			SetWindowTextA(GetDlgItem(window,BUTTON_DLG5_ABORT),TXT_ABORT);
+			
 			SendMessage(window, WM_SETICON, ICON_SMALL, (LPARAM)hicon);
 			
 			SendDlgItemMessage(window,INPUT_DLG5_PASSWD,EM_LIMITTEXT,MAX_PASSWORD,0);
@@ -1897,7 +1897,7 @@ INT_PTR CALLBACK DialogGetPassword(HWND window, UINT uMsg, WPARAM wParam, LPARAM
 
 			SetFocus(GetDlgItem(window, INPUT_DLG5_PASSWD));
 			
-			SetWindowTextA(window, "Kennwort eingeben");
+			SetWindowTextA(window, MSG_INSERT_PASSWORD);
 
 		return TRUE;
 		case WM_COMMAND:
@@ -1932,14 +1932,14 @@ INT_PTR CALLBACK DialogGetPassword(HWND window, UINT uMsg, WPARAM wParam, LPARAM
 						rand_mem(buf64,sizeof(buf64));
 						secure_fclose(file,file_buf,sizeof file_buf);
 					} else {
-						MessageBoxA(NULL, "Die Datei "KEYFILE_PATH_STORE" kann nicht geöffnet werden.", "Fehler", MB_ICONERROR|MB_OK);
+						MessageBoxA(NULL, MSG_KEYFILE_CAN_NOT_OPEN, MSG_ERROR, MB_ICONERROR|MB_OK);
 						goto end_getpassword;
 					}
 
 					if(len>=MAX_PATH+crypto_stream_xsalsa20_NONCEBYTES) {
 						byte_copy(n,crypto_stream_xsalsa20_NONCEBYTES,buf+MAX_PATH);
 					} else {
-						MessageBoxA(NULL, "Fehler in Datei "KEYFILE_PATH_STORE".", "Fehler", MB_ICONERROR|MB_OK);
+						MessageBoxA(NULL, MSG_KEYFILE_ERROR, MSG_ERROR, MB_ICONERROR|MB_OK);
 						goto end_getpassword;
 					}
 					
@@ -1975,7 +1975,7 @@ INT_PTR CALLBACK DialogGetPassword(HWND window, UINT uMsg, WPARAM wParam, LPARAM
 						
 						} else {
 							
-							MessageBoxA(NULL, "Falsches Kennwort.", "Fehler", MB_ICONERROR|MB_OK);
+							MessageBoxA(NULL, MSG_WRONG_PASSWORD, MSG_ERROR, MB_ICONERROR|MB_OK);
 							SendDlgItemMessageA(window, INPUT_DLG5_PASSWD, WM_SETTEXT, 0, (LPARAM)"");
 							SetFocus(GetDlgItem(window, INPUT_DLG5_PASSWD));
 
@@ -2034,10 +2034,14 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE h0, LPSTR lpCmdLine, int nCmdShow)
 		^memstat.dwAvailVirtual);
 	
 	CryptAcquireContext(&hCryptProv,NULL,NULL,PROV_RSA_FULL,0);
-		
+
+#ifdef WITH_LIBSODIUM
+	sodium_init();
+#endif
+	
 	if(!stralloc_ready(&sabuf,base64_len(MAX_INPUT)+4)||
 		!stralloc_ready(&sabuf64,base64_len(MAX_INPUT)+4)) {
-		MessageBoxA(NULL, "Zu wenig Hauptspeicher, Programm kann nicht gestartet werden.", "Fehler", MB_ICONERROR|MB_OK);
+		MessageBoxA(NULL, MSG_OUT_OF_MEM_CAN_NOT_START, MSG_ERROR, MB_ICONERROR|MB_OK);
 		goto err;
 	}
 	
@@ -2046,14 +2050,14 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE h0, LPSTR lpCmdLine, int nCmdShow)
 		test_crypto_hashblocks_sha256()==0||
 		test_crypto_box_static()==0||
 		test_crypto_box_beforenm_and_afternm()==0) {
-		MessageBoxA(NULL, "Der Selbsttest der Krypto-Funktionen ist fehlgeschlagen. Bitte lade Dir eine neue Version von fritz auf http://njör.de/Projekte/fritz.html ", "Fehler", MB_ICONERROR|MB_OK);
+		MessageBoxA(NULL, MSG_CRYPTO_TEST_ERROR, MSG_ERROR, MB_ICONERROR|MB_OK);
 		goto err;
 	}
 	
 	if(stat(KEY_PUB,&st_pub)<0||stat(KEY_PRIV,&st_priv)<0) {
 
 create_new_keys:
-		if(MessageBoxA(NULL, "Eigene Schlüssel wurden nicht gefunden, beim Fortfahren wird ein neues Schlüsselpaar angelegt.", "Eigene Schlüssel nicht gefunden", MB_ICONWARNING|MB_OKCANCEL) == IDCANCEL) {
+		if(MessageBoxA(NULL, MSG_KEYS_NOT_FOUND, MSG_KEYS_NOT_FOUND_TITLE, MB_ICONWARNING|MB_OKCANCEL) == IDCANCEL) {
 			goto err;
 		}
 		
@@ -2103,7 +2107,7 @@ create_new_keys:
 			// last password reset > 100 days -> must change
 			if(time(NULL)>(60*60*24*100)+st_pub.st_mtime) {
 
-				if(MessageBoxA(NULL, "Das Kennwort für Deinen geheimen Schlüssel ist älter als 100 Tage und muss geändert werden.", "Kennwort abgelaufen", MB_ICONWARNING|MB_OKCANCEL) == IDCANCEL) {
+				if(MessageBoxA(NULL, MSG_PASSWORD_TO_OLD, MSG_PASSWORD_TO_OLD_TITLE, MB_ICONWARNING|MB_OKCANCEL) == IDCANCEL) {
 					goto err;
 				}			
 
@@ -2115,8 +2119,8 @@ create_new_keys:
 					rand_mem(key64,KEY64_SIZE);
 					secure_fclose(priv,file_priv,sizeof file_priv);
 				} else {
-					snprintf(message,sizeof(message),"Schlüssel %s kann nicht geladen werden.",KEY_PRIV);
-					MessageBoxA(NULL, message, "Fehler", MB_ICONERROR|MB_OK);
+					snprintf(message, sizeof(message), MSG_CAN_NOT_LOAD_KEY, KEY_PRIV);
+					MessageBoxA(NULL, message, MSG_ERROR, MB_ICONERROR|MB_OK);
 					goto err;
 				}
 				
@@ -2150,9 +2154,9 @@ create_new_keys:
 					if(key_file_hash[i]!=0) break;
 				}
 				if(i==0) {
-					MessageBoxA(NULL, "Kennwort erfolgreich geändert. Es ist keine Schlüsseldatei hinterlegt.", "Neues Kennwort", MB_ICONINFORMATION|MB_OK);
+					MessageBoxA(NULL, MSG_PASSWORD_CHANGED_NO_KEYFILE, MSG_NEW_PASSWORD, MB_ICONINFORMATION|MB_OK);
 				} else {
-					MessageBoxA(NULL, "Kennwort erfolgreich geändert. Bitte die hinterlegte Schlüsseldatei nicht mehr verändern, da Dein geheimer Schlüssel sonst nicht mehr geöffnet werden kann.", "Neues Kennwort und Schlüsseldatei", MB_ICONINFORMATION|MB_OK);
+					MessageBoxA(NULL, MSG_PASSWORD_CHANGED_KEYFILE, MSG_NEW_PASSWORD_KEYFILE, MB_ICONINFORMATION|MB_OK);
 				}
 			}
 		} else {
